@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">TenziesApp</string>
+    <string name="game_name">Tenzies</string>
+    <string name="game_description">Roll until all dice are the same. Click each die to freeze it at its current value between rolls.</string>
+    <string name="roll">roll</string>
+    <string name="game_over">game over</string>
+</resources>
