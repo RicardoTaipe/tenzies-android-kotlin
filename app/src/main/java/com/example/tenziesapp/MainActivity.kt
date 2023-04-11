@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: DiceViewModel by viewModels()
+    private val viewModel: DiceViewModel by viewModels { DiceViewModel.Factory }
     private val diceAdapter = DiceAdapter()
     private val party = Party(
         speed = 0f,

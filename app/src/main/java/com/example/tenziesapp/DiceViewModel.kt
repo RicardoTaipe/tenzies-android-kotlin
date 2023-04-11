@@ -1,55 +1,40 @@
 package com.example.tenziesapp
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.*
 
 
-class DiceViewModel : ViewModel() {
-    private var dice = emptyList<Dice>()
+class DiceViewModel(private val game: TenziesGame) : ViewModel() {
     private val _diceUi = MutableLiveData<List<Dice>>()
     val diceUi: LiveData<List<Dice>>
         get() = _diceUi
 
     var gameOver: LiveData<Boolean> = Transformations.map(_diceUi) {
-        val allHeld = dice.all { it.isSelected }
-        val firstValue = dice[0].value
-        val allSameValue = dice.all { it.value == firstValue }
-        allHeld && allSameValue
+        game.isGameOver()
     }
 
     init {
-        dice = generateNewDice()
-        _diceUi.value = dice
-    }
-
-    private fun generateNewDice(): List<Dice> {
-        return List(10) {
-            Dice()
-        }
+        _diceUi.value = game.dice
     }
 
     fun rollDice() {
-        dice = if (gameOver.value == false) {
-            dice.map { item ->
-                if (item.isSelected) item else Dice()
-            }
-        } else {
-            generateNewDice()
-        }
-        _diceUi.value = dice
+        _diceUi.value = game.rollDice()
     }
 
     fun holdDice(id: String) {
-        if (gameOver.value == true) return
-        dice = dice.map { item ->
-            if (item.id == id) {
-                item.isSelected = !item.isSelected
-                item.rolling = false
+        game.holdDice(id)
+        _diceUi.value = game.dice
+    }
+
+    // Define ViewModel factory in a companion object
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(DiceViewModel::class.java)) {
+                    return DiceViewModel(TenziesGame()) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class")
             }
-            item
         }
-        _diceUi.value = dice
     }
 }
