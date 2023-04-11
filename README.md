@@ -4,6 +4,7 @@ The object of the game is to keep rolling until all ten of your dice show the sa
 - Databinding
 - MVVM
 - MediaPlayer
+- Junit
 
 ## Preview
 
