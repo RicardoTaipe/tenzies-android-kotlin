@@ -1,5 +1,5 @@
 # tenzies-android-kotlin
-The objest of the game is to keep rolling until all ten of your dice show the same number.
+The object of the game is to keep rolling until all ten of your dice show the same number.
 - Kotlin
 - Databinding
 - MVVM
