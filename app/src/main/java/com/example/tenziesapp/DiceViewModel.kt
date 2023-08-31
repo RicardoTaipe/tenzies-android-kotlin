@@ -8,7 +8,7 @@ class DiceViewModel(private val game: TenziesGame) : ViewModel() {
     val diceUi: LiveData<List<Dice>>
         get() = _diceUi
 
-    var gameOver: LiveData<Boolean> = Transformations.map(_diceUi) {
+    val gameOver: LiveData<Boolean> = Transformations.map(_diceUi) {
         game.isGameOver()
     }
 

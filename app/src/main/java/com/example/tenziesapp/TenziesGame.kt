@@ -14,9 +14,11 @@ class TenziesGame {
         }
     }
 
+    private fun areAllDiceSelected() = dice.all { it.isSelected }
+
     fun isGameOver(): Boolean {
-        val allHeld = dice.all { it.isSelected }
-        val firstValue = dice[0].value
+        val allHeld = areAllDiceSelected()
+        val firstValue = dice.first().value
         val allSameValue = dice.all { it.value == firstValue }
         return allHeld && allSameValue
     }
@@ -33,13 +35,11 @@ class TenziesGame {
     }
 
     fun holdDice(id: String) {
-        if (isGameOver()) return
-        dice = dice.map { item ->
-            if (item.id == id) {
-                item.isSelected = !item.isSelected
-                item.rolling = false
+        if (!isGameOver()) {
+            dice.find { it.id == id }?.let {
+                it.isSelected = !it.isSelected
+                it.rolling = false
             }
-            item
         }
     }
 }

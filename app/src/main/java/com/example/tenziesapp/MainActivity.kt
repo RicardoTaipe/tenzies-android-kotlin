@@ -51,8 +51,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         diceAdapter.itemClickListener = { dice, position ->
-            viewModel.holdDice(dice.id)
-            diceAdapter.notifyItemChanged(position)
+            if (viewModel.gameOver.value == false) {
+                viewModel.holdDice(dice.id)
+                diceAdapter.notifyItemChanged(position)
+            }
         }
 
         viewModel.gameOver.observe(this) {
