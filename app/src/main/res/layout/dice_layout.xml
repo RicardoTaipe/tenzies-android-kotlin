@@ -6,22 +6,17 @@
 
     </data>
 
-    <FrameLayout
+    <ImageView
+        android:id="@+id/dice_img"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:foreground="?attr/selectableItemBackground"
+        android:adjustViewBounds="true"
         android:clickable="true"
+        android:contentDescription="1"
         android:focusable="true"
-        android:padding="4dp">
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerCrop"
+        tools:ignore="HardcodedText"
+        tools:srcCompat="@drawable/dice1" />
 
-        <ImageView
-            android:id="@+id/dice_img"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:contentDescription="1"
-            android:scaleType="centerCrop"
-            tools:ignore="HardcodedText"
-            tools:srcCompat="@drawable/dice1" />
-    </FrameLayout>
 </layout>
