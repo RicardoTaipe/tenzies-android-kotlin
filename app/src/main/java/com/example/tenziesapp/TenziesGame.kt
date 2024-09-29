@@ -38,7 +38,6 @@ class TenziesGame {
         if (!isGameOver()) {
             dice.find { it.id == id }?.let {
                 it.isSelected = !it.isSelected
-                it.rolling = false
             }
         }
     }

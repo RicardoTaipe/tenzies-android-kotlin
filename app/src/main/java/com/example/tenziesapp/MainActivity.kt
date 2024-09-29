@@ -15,72 +15,90 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val viewModel: DiceViewModel by viewModels { DiceViewModel.Factory }
+    private val diceGenerator = DiceGeneratorImp()
+    private val viewModel: DiceViewModel by viewModels { DiceViewModel.provideFactory(diceGenerator) }
     private val diceAdapter = DiceAdapter()
-    private val party = Party(
-        speed = 0f,
-        maxSpeed = 30f,
-        damping = 0.9f,
-        spread = 360,
-        colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
-        emitter = Emitter(duration = 5, TimeUnit.SECONDS).max(1000),
-        position = Position.Relative(0.5, 0.3)
-    )
-
-    private val mediaPlayer = MediaPlayer().apply {
-        setOnPreparedListener { start() }
-        setOnCompletionListener { reset() }
+    private val mediaPlayer: MediaPlayer by lazy {
+        MediaPlayer().apply {
+            setOnPreparedListener { start() }
+            setOnCompletionListener { reset() }
+        }
     }
+    private val party: Party by lazy {
+        Party(
+            speed = 0f,
+            maxSpeed = 30f,
+            damping = 0.9f,
+            spread = 360,
+            colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+            emitter = Emitter(duration = 3, TimeUnit.SECONDS).max(1000),
+            position = Position.Relative(0.5, 0.3)
+        )
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+        setupRecyclerView()
+        setupObservers()
+        setupListeners()
+    }
 
+    private fun setupRecyclerView() {
         binding.recyclerView.run {
             adapter = diceAdapter
             itemAnimator = null
         }
+    }
 
-        viewModel.diceUi.observe(this) {
-            diceAdapter.submitList(it)
-        }
+    private fun setupObservers() {
+        viewModel.diceUi.observe(this) { diceAdapter.submitList(it) }
 
-        binding.rollBtn.setOnClickListener {
-            viewModel.rollDice()
-            playSound(R.raw.rollingdice)
-        }
-
-        diceAdapter.itemClickListener = { dice, position ->
-            if (viewModel.gameOver.value == false) {
-                viewModel.holdDice(dice.id)
-                diceAdapter.notifyItemChanged(position)
-            }
-        }
-
-        viewModel.gameOver.observe(this) {
-            if (it) {
+        viewModel.isGameOver.observe(this) { isGameOver ->
+            if (isGameOver) {
                 binding.rollBtn.text = getString(R.string.game_over)
-                binding.confetti.start(party)
-                playSound(R.raw.goodresult)
+                //binding.confetti.start(party)
+                //playSound(R.raw.goodresult)
             } else {
                 binding.rollBtn.text = getString(R.string.roll)
-                if (binding.confetti.isActive()) {
-                    binding.confetti.stop(party)
-                }
+                if (binding.confetti.isActive()) binding.confetti.stop(party)
             }
+        }
+
+        viewModel.soundEvent.observe(this, EventObserver { rawRes ->
+            playSound(rawRes)
+        })
+
+        viewModel.onGameFinished.observe(this, EventObserver {
+            binding.confetti.start(party)
+        })
+    }
+
+    private fun setupListeners() {
+        binding.rollBtn.setOnClickListener {
+            viewModel.rollDice()
+            diceAdapter.isAnimationEnabled = true
+            //TODO move this to and event to playsound
+            //playSound(R.raw.rollingdice)
+        }
+
+        diceAdapter.itemClickListener = { dice, _ ->
+            viewModel.holdDice(dice.id)
         }
     }
 
     private fun playSound(@RawRes rawResId: Int) {
-        val assetFileDescriptor = applicationContext.resources.openRawResourceFd(rawResId) ?: return
-        mediaPlayer.run {
-            reset()
-            setDataSource(
-                assetFileDescriptor.fileDescriptor,
-                assetFileDescriptor.startOffset,
-                assetFileDescriptor.declaredLength
-            )
-            prepareAsync()
+        applicationContext.resources.openRawResourceFd(rawResId)?.let { assetFileDescriptor ->
+            mediaPlayer.run {
+                reset()
+                setDataSource(
+                    assetFileDescriptor.fileDescriptor,
+                    assetFileDescriptor.startOffset,
+                    assetFileDescriptor.declaredLength
+                )
+                prepareAsync()
+            }
         }
     }
 
@@ -90,3 +108,7 @@ class MainActivity : AppCompatActivity() {
         mediaPlayer.release()
     }
 }
+//compose
+//https://github.com/google-developer-training/basic-android-kotlin-compose-training-unscramble/tree/viewmodel
+//views
+//https://github.com/google-developer-training/android-basics-kotlin-unscramble-app/tree/main
