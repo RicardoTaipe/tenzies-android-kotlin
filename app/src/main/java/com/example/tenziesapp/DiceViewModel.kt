@@ -70,7 +70,6 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
         }
     }
 
-    private fun isGameOver(): Boolean = _isGameOver.value == true
     private fun areAllDiceHeld() = diceList.all { it.isSelected }
     private fun allDiceHaveSameValue(): Boolean = diceList.run {
         val firstValue = first().value
