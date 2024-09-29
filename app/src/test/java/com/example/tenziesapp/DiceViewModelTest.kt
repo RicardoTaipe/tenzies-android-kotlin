@@ -6,11 +6,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.junit.MockitoJUnitRunner
+import java.util.concurrent.TimeoutException
 
 @RunWith(MockitoJUnitRunner::class)
 class DiceViewModelTest {
@@ -158,5 +160,19 @@ class DiceViewModelTest {
         assertEquals(
             R.raw.rollingdice, viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
         )
+    }
+
+    @Test
+    fun givenAllDicesAreSelectedWithDifferentValuesWhenRollDiceThenDoNotPlaySound() {
+        val mockDiceList = getRandomList(allSelected = true)
+        viewModel = DiceViewModel(mockDiceList)
+
+        viewModel.rollDice()
+
+        val resetList = viewModel.diceUi.getOrAwaitValue()
+        assertEquals(mockDiceList, resetList)
+        assertThrows("Sound Event should not be called", TimeoutException::class.java) {
+            viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
+        }
     }
 }

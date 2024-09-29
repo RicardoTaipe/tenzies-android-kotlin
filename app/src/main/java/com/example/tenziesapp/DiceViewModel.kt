@@ -25,7 +25,7 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
             updateDiceAfterRoll()
             checkGameOver()
         }
-        playSound(R.raw.rollingdice)
+        if (!areAllDiceHeld()) playSound(R.raw.rollingdice)
     }
 
     private fun toggleDiceSelection(id: String) {
