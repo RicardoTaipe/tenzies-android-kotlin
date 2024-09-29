@@ -15,8 +15,7 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val diceGenerator = DiceGeneratorImp()
-    private val viewModel: DiceViewModel by viewModels { DiceViewModel.provideFactory(diceGenerator) }
+    private val viewModel: DiceViewModel by viewModels { DiceViewModel.provideFactory() }
     private val diceAdapter = DiceAdapter()
     private val mediaPlayer: MediaPlayer by lazy {
         MediaPlayer().apply {
@@ -58,8 +57,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.isGameOver.observe(this) { isGameOver ->
             if (isGameOver) {
                 binding.rollBtn.text = getString(R.string.game_over)
-                //binding.confetti.start(party)
-                //playSound(R.raw.goodresult)
             } else {
                 binding.rollBtn.text = getString(R.string.roll)
                 if (binding.confetti.isActive()) binding.confetti.stop(party)
@@ -79,8 +76,6 @@ class MainActivity : AppCompatActivity() {
         binding.rollBtn.setOnClickListener {
             viewModel.rollDice()
             diceAdapter.isAnimationEnabled = true
-            //TODO move this to and event to playsound
-            //playSound(R.raw.rollingdice)
         }
 
         diceAdapter.itemClickListener = { dice, _ ->

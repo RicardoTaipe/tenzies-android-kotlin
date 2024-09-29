@@ -3,8 +3,7 @@ package com.example.tenziesapp
 import androidx.annotation.RawRes
 import androidx.lifecycle.*
 
-class DiceViewModel(private val diceGenerator: DiceGenerator) : ViewModel() {
-    private var diceList: List<Dice> = diceGenerator.generateNewDice()
+class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel() {
 
     private val _diceUi = MutableLiveData(diceList)
     val diceUi: LiveData<List<Dice>> = _diceUi
@@ -38,23 +37,25 @@ class DiceViewModel(private val diceGenerator: DiceGenerator) : ViewModel() {
 
     private fun updateDiceAfterRoll() {
         diceList = diceList.map { dice ->
-            if (dice.isSelected) dice else diceGenerator.generateNewDice().first()
+            if (dice.isSelected) dice else Dice()
         }.also { _diceUi.value = it }
     }
 
     fun holdDice(id: String) {
         if (!isGameOver()) {
             toggleDiceSelection(id)
-            checkGameOver()
         }
     }
 
+    private fun generateNewDice() = List(10) { Dice() }
+
     private fun restartGame() {
-        diceGenerator.generateNewDice().apply {
+        generateNewDice().apply {
             diceList = this
             _diceUi.value = this
         }
         _isGameOver.value = false
+        playSound(R.raw.rollingdice)
     }
 
     private fun playSound(@RawRes rawRes: Int) {
@@ -80,12 +81,12 @@ class DiceViewModel(private val diceGenerator: DiceGenerator) : ViewModel() {
 
 
     companion object {
-        fun provideFactory(diceGenerator: DiceGenerator): ViewModelProvider.Factory =
+        fun provideFactory(): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     if (modelClass.isAssignableFrom(DiceViewModel::class.java)) {
-                        return DiceViewModel(diceGenerator) as T
+                        return DiceViewModel(List(10) { Dice() }) as T
                     }
                     throw IllegalArgumentException("Unknown ViewModel class")
                 }
