@@ -19,7 +19,7 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
 
 
     fun rollDice() {
-        if (isGameOver()) {
+        if (allDiceHaveSameValue() && areAllDiceHeld()) {
             restartGame()
         } else {
             updateDiceAfterRoll()
@@ -32,7 +32,6 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
         diceList = diceList.map { dice ->
             if (dice.id == id) dice.copy(isSelected = !dice.isSelected) else dice
         }.also { _diceUi.value = it }
-
     }
 
     private fun updateDiceAfterRoll() {
@@ -42,9 +41,9 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
     }
 
     fun holdDice(id: String) {
-        if (!isGameOver()) {
-            toggleDiceSelection(id)
-        }
+        if (allDiceHaveSameValue() && areAllDiceHeld()) return
+        toggleDiceSelection(id)
+        checkGameOver()
     }
 
     private fun generateNewDice() = List(10) { Dice() }
@@ -55,7 +54,6 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
             _diceUi.value = this
         }
         _isGameOver.value = false
-        playSound(R.raw.rollingdice)
     }
 
     private fun playSound(@RawRes rawRes: Int) {

@@ -5,6 +5,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -22,8 +23,10 @@ class DiceViewModelTest {
         isGameOver: Boolean = false,
         allSelected: Boolean = false,
         someSelected: Boolean = false,
+        allSameValue: Boolean = false,
     ): List<Dice> {
         return when {
+            allSameValue -> List(10) { Dice(value = 6) }
             allSelected -> List(10) { Dice(isSelected = true) }
             someSelected -> List(5) { Dice(value = 5, isSelected = true) } + List(5) { Dice() }
             isGameOver -> List(10) { Dice(value = 5, isSelected = true) }
@@ -42,30 +45,78 @@ class DiceViewModelTest {
         assertEquals(mockDiceList, actual)
     }
 
+    /**
+     * HOLD ACTION
+     * */
+
     @Test
-    fun givenRandomDiceListWhenADiceIsHeldThenDiceShouldBeSelected() {
+    fun givenRandomDiceListWhenOneOrMoreDiceAreHeldThenDiceShouldBeSelected() {
         val mockDiceList = getRandomList()
         viewModel = DiceViewModel(mockDiceList)
 
-        val diceToHeld = mockDiceList[0]
-        viewModel.holdDice(diceToHeld.id)
-        val expected = viewModel.diceUi.getOrAwaitValue().first { it.id == diceToHeld.id }
+        val selectedDiceCount = 3
+        mockDiceList.take(selectedDiceCount).forEach {
+            viewModel.holdDice(it.id)
+        }
 
-        assertTrue(expected.isSelected)
-        assertEquals(expected.value, diceToHeld.value)
+        val actualCount = viewModel.diceUi.getOrAwaitValue().filter { it.isSelected }.size
+        assertEquals(selectedDiceCount, actualCount)
+    }
+
+
+    @Test
+    fun givenAllDiceSelectedWithDifferentValuesWhenOneOrMoreDiceAreUnselectedThenDiceShouldBeUnSelected() {
+        val mockDiceList = getRandomList(allSelected = true)
+        viewModel = DiceViewModel(mockDiceList)
+
+        val unselectedDiceCount = 4
+        mockDiceList.take(unselectedDiceCount).forEach {
+            viewModel.holdDice(it.id)
+        }
+
+        val actualCount = viewModel.diceUi.getOrAwaitValue().filter { it.isUnSelected }.size
+        assertEquals(unselectedDiceCount, actualCount)
+    }
+
+    @Test
+    fun givenDiceListWithDifferentValuesWhenOneOrMoreAreSelectedThenGameIsNotOver() {
+        val mockDiceList = getRandomList()
+        viewModel = DiceViewModel(mockDiceList)
+
+        mockDiceList.forEach {
+            viewModel.holdDice(it.id)
+        }
+
+        assertFalse(viewModel.isGameOver.getOrAwaitValue())
+    }
+
+    @Test
+    fun givenAllDiceWithSameValueWhenAllAreSelectedThenGameIsOverAndPlaySound() {
+        val mockDiceList = getRandomList(allSameValue = true)
+        viewModel = DiceViewModel(mockDiceList)
+        mockDiceList.forEach {
+            viewModel.holdDice(it.id)
+        }
+        assertTrue(viewModel.isGameOver.getOrAwaitValue())
+        assertEquals(
+            R.raw.goodresult,
+            viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
+        )
+        assertNotNull(viewModel.onGameFinished.getOrAwaitValue().getContentIfNotHandled())
     }
 
     @Test
     fun givenGameIsOverWhenADiceIsSelectedShouldNotSelectAnyDice() {
         val mockDiceList = getRandomList(isGameOver = true)
         viewModel = DiceViewModel(mockDiceList)
-
         viewModel.holdDice(mockDiceList.first().id)
 
-        val expected = viewModel.diceUi.getOrAwaitValue()
-        assertEquals(expected, mockDiceList)
+        assertEquals(mockDiceList, viewModel.diceUi.getOrAwaitValue())
     }
 
+    /**
+     * ROLL ACTION
+     * */
     @Test
     fun givenNoDiceSelectedWhenRollDiceThenGetNewRandomDiceAndPlayRollSound() {
         val mockDiceList = getRandomList()
@@ -95,7 +146,7 @@ class DiceViewModelTest {
     }
 
     @Test
-    fun givenAllDicesAreSelectedWithSameValuesWhenRollDiceThenGameIsOverAndResetGame() {
+    fun givenAllDicesAreSelectedWithSameValuesWhenRollDiceThenResetGame() {
         val mockDiceList = getRandomList(isGameOver = true)
         viewModel = DiceViewModel(mockDiceList)
 
@@ -107,103 +158,5 @@ class DiceViewModelTest {
         assertEquals(
             R.raw.rollingdice, viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
         )
-
-
     }
-
-
-//
-//    @Test
-//    fun `rollDice does nothing if game over`() {
-//        val mockDiceList = List(10) { Dice(value = 5, isSelected = true) }
-//        `when`(diceGenerator.generate()).thenReturn(mockDiceList)
-//        viewModel.generateNewDice()
-//        viewModel.rollDice()
-//
-//    }
-//
-//    @Test
-//    fun `rollDice should update dice list and play sound`() {
-//        // Act
-//        viewModel.rollDice()
-//        //assertNotEquals(diceList, viewModel.diceUi.getOrAwaitValue())
-//        val expectedEvent = viewModel.soundEvent.getOrAwaitValue()
-//        assertEquals(expectedEvent.getContentIfNotHandled(), R.raw.rollingdice)
-//    }
-//
-//    @Test
-//    fun `restartGame should reset the dice list and isGameOver flag`() {
-//
-//        // Simulate game over
-//        `when`(diceGenerator.generate()).thenReturn(
-//            List(10) { Dice(id = it.toString(), value = 1, isSelected = true) }
-//        )
-//        viewModel.generateNewDice()
-//        viewModel.rollDice()
-//        // Assert
-//        assertTrue(viewModel.isGameOver.getOrAwaitValue())
-//        assertEquals(
-//            R.raw.goodresult,
-//            viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
-//        )
-//        assertNotNull(viewModel.onGameFinished.getOrAwaitValue().getContentIfNotHandled())
-//        verify(diceGenerator, times(2)).generate()
-//    }
-//
-//
-//    @Test
-//    fun `should play sound when roll dice`() {
-//        // Act
-//        viewModel.rollDice()
-//        // Assert
-//        val expectedEvent = viewModel.soundEvent.getOrAwaitValue()
-//        assertEquals(expectedEvent.getContentIfNotHandled(), R.raw.rollingdice)
-//    }
-//
-//    @Test
-//    fun whenDiceIsNotSelectedGenerateNewDice() {
-//        val diceList = List(10) {
-//            Dice()
-//        }
-//        `when`(diceGenerator.generate()).thenReturn(diceList)
-//        viewModel.generateNewDice()
-//        `when`(diceGenerator.generateSingleDie()).thenReturn(Dice())
-//
-//        viewModel.rollDice()
-//        val expected = viewModel.diceUi.getOrAwaitValue().map { it.id }
-//        assertNotEquals(expected, diceList.map { it.id })
-//    }
-//
-//    @Test
-//    fun whenAllDiceHaveSameValueGameIsOver() {
-//        val diceList = List(10) {
-//            Dice(value = 3)
-//        }
-//        `when`(diceGenerator.generate()).thenReturn(diceList)
-//        viewModel.generateNewDice()
-//
-//        diceList.forEach {
-//            viewModel.holdDice(it.id)
-//        }
-//
-//        assertTrue(viewModel.isGameOver.getOrAwaitValue())
-//    }
-//
-//
-//
-//    @Test
-//    fun givenAllDiceAreHeldWhenHoldDiceAgainThenNoSound() {
-//        val diceList = List(5) {
-//            Dice(isSelected = true, value = 5)
-//        } + List(5) {
-//            Dice(isSelected = true, value = 1)
-//        }
-//        `when`(diceGenerator.generate()).thenReturn(diceList)
-//        viewModel.generateNewDice()
-//
-//        viewModel.holdDice(diceList.first().id)
-//        val expected = viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
-//        assertEquals(expected, null)
-//    }
-
 }
