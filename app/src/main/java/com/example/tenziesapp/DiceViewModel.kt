@@ -1,7 +1,13 @@
 package com.example.tenziesapp
 
 import androidx.annotation.RawRes
-import androidx.lifecycle.*
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 
 class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel() {
 
@@ -78,15 +84,12 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
 
 
     companion object {
-        fun provideFactory(): ViewModelProvider.Factory =
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    if (modelClass.isAssignableFrom(DiceViewModel::class.java)) {
-                        return DiceViewModel(List(10) { Dice() }) as T
-                    }
-                    throw IllegalArgumentException("Unknown ViewModel class")
-                }
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val application = (this[APPLICATION_KEY] as TenziesApplication)
+                val diceList = application.container.diceGenerator
+                DiceViewModel(diceList)
             }
+        }
     }
 }
