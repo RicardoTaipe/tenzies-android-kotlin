@@ -45,21 +45,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
+        // Add ItemDecoration for spacing between items
+        val spacing = resources.getDimensionPixelSize(R.dimen.grid_spacing)
+        val gridSpacingItemDecoration = GridSpacingItemDecoration(5, spacing, true)
         binding.recyclerView.run {
             adapter = diceAdapter
             itemAnimator = null
+            addItemDecoration(gridSpacingItemDecoration)
         }
     }
 
     private fun setupObservers() {
-        viewModel.diceUi.observe(this) { diceAdapter.submitList(it) }
+        viewModel.diceUi.observe(this) {
+            diceAdapter.run {
+                submitList(it)
+                isAnimationEnabled = false
+            }
+        }
 
         viewModel.isGameOver.observe(this) { isGameOver ->
-            if (isGameOver) {
-                binding.rollBtn.text = getString(R.string.game_over)
-            } else {
-                binding.rollBtn.text = getString(R.string.roll)
-                if (binding.confetti.isActive()) binding.confetti.stop(party)
+            with(binding) {
+                rollBtn.text = getString(if (isGameOver) R.string.game_over else R.string.roll)
+                confetti.takeIf { it.isActive() }?.stop(party)
             }
         }
 

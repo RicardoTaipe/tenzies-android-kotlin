@@ -1,5 +1,11 @@
 package com.example.tenziesapp
 
+import org.jetbrains.annotations.VisibleForTesting
+
 object ServiceLocator {
-    fun provideAppContainer(): AppContainer = AppContainerImp()
+
+    @Volatile
+    var diceGenerator: DiceGenerator = DiceGeneratorImp()
+        @VisibleForTesting set
+    fun provideDiceGenerator(): DiceGenerator = diceGenerator
 }

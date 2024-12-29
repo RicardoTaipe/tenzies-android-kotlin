@@ -9,7 +9,11 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 
-class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel() {
+class DiceViewModel(
+    private val diceGenerator: DiceGenerator,
+) : ViewModel() {
+
+    private var diceList: List<Dice> = diceGenerator.generateNewDice()
 
     private val _diceUi = MutableLiveData(diceList)
     val diceUi: LiveData<List<Dice>> = _diceUi
@@ -25,32 +29,45 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
 
 
     fun rollDice() {
-        if (allDiceHaveSameValue() && areAllDiceHeld()) {
+        if (isGameOverCondition()) {
             restartGame()
         } else {
             updateDiceAfterRoll()
             checkGameOver()
         }
-        if (!areAllDiceHeld()) playSound(R.raw.rollingdice)
-    }
-
-    private fun toggleDiceSelection(id: String) {
-        diceList = diceList.map { dice ->
-            if (dice.id == id) dice.copy(isSelected = !dice.isSelected) else dice
-        }.also { _diceUi.value = it }
-    }
-
-    private fun updateDiceAfterRoll() {
-        diceList = diceList.map { dice ->
-            if (dice.isSelected) dice else Dice()
-        }.also { _diceUi.value = it }
+        playSoundIfDiceAreNotHeld()
     }
 
     fun holdDice(id: String) {
-        if (allDiceHaveSameValue() && areAllDiceHeld()) return
-        toggleDiceSelection(id)
-        checkGameOver()
+        if (!isGameOverCondition()) {
+            toggleDiceSelection(id)
+            checkGameOver()
+        }
     }
+
+    private fun toggleDiceSelection(id: String) {
+        updateDice {
+            if (it.id == id) it.copy(isSelected = !it.isSelected) else it
+        }
+    }
+
+
+    private fun updateDiceAfterRoll() {
+        updateDice { dice ->
+            if (dice.isSelected) dice else diceGenerator.generateSingleDice()
+        }
+    }
+
+    private fun updateDice(updateFn: (Dice) -> Dice) {
+        diceList = diceList.map(updateFn)
+        _diceUi.value = diceList
+    }
+
+    private fun playSoundIfDiceAreNotHeld() {
+        if (!areAllDiceHeld()) playSound(R.raw.rollingdice)
+    }
+
+    private fun isGameOverCondition() = allDiceHaveSameValue() && areAllDiceHeld()
 
     private fun generateNewDice() = List(10) { Dice() }
 
@@ -67,10 +84,8 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
     }
 
     private fun checkGameOver() {
-        val isGameOverCondition = areAllDiceHeld() && allDiceHaveSameValue()
-        _isGameOver.value = isGameOverCondition
-
-        if (isGameOverCondition) {
+        if (isGameOverCondition()) {
+            _isGameOver.value = true
             playSound(R.raw.goodresult)
             _onGameFinished.value = Event(Unit)
         }
@@ -87,8 +102,8 @@ class DiceViewModel(private var diceList: List<Dice> = emptyList()) : ViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as TenziesApplication)
-                val diceList = application.container.diceGenerator
-                DiceViewModel(diceList)
+                val diceGenerator = application.diceGenerator
+                DiceViewModel(diceGenerator)
             }
         }
     }

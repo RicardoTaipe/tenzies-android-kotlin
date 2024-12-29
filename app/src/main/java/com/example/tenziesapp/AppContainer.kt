@@ -1,11 +1,11 @@
 package com.example.tenziesapp
 
 interface AppContainer {
-    val diceGenerator: List<Dice>
+    val diceGenerator: DiceGenerator
 }
 
 class AppContainerImp : AppContainer {
-    override val diceGenerator: List<Dice> by lazy {
-        List(10) { Dice() }
+    override val diceGenerator: DiceGenerator by lazy {
+        DiceGeneratorImp()
     }
 }

@@ -36,10 +36,22 @@ class DiceViewModelTest {
         }
     }
 
+
+    private fun getFakeGenerator(mockDiceList: List<Dice>): DiceGenerator {
+        return  object : DiceGenerator {
+            override fun generateNewDice(): List<Dice> {
+                return mockDiceList
+            }
+
+            override fun generateSingleDice() = Dice()
+        }
+    }
+
     @Test
     fun whenInitGameThenGetARandomDiceList() {
         val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(mockDiceList)
+        getFakeGenerator(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         val actual = viewModel.diceUi.getOrAwaitValue()
 
@@ -47,14 +59,10 @@ class DiceViewModelTest {
         assertEquals(mockDiceList, actual)
     }
 
-    /**
-     * HOLD ACTION
-     * */
-
     @Test
     fun givenRandomDiceListWhenOneOrMoreDiceAreHeldThenDiceShouldBeSelected() {
         val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         val selectedDiceCount = 3
         mockDiceList.take(selectedDiceCount).forEach {
@@ -69,7 +77,7 @@ class DiceViewModelTest {
     @Test
     fun givenAllDiceSelectedWithDifferentValuesWhenOneOrMoreDiceAreUnselectedThenDiceShouldBeUnSelected() {
         val mockDiceList = getRandomList(allSelected = true)
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         val unselectedDiceCount = 4
         mockDiceList.take(unselectedDiceCount).forEach {
@@ -83,7 +91,7 @@ class DiceViewModelTest {
     @Test
     fun givenDiceListWithDifferentValuesWhenOneOrMoreAreSelectedThenGameIsNotOver() {
         val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         mockDiceList.forEach {
             viewModel.holdDice(it.id)
@@ -95,7 +103,7 @@ class DiceViewModelTest {
     @Test
     fun givenAllDiceWithSameValueWhenAllAreSelectedThenGameIsOverAndPlaySound() {
         val mockDiceList = getRandomList(allSameValue = true)
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
         mockDiceList.forEach {
             viewModel.holdDice(it.id)
         }
@@ -110,7 +118,7 @@ class DiceViewModelTest {
     @Test
     fun givenGameIsOverWhenADiceIsSelectedShouldNotSelectAnyDice() {
         val mockDiceList = getRandomList(isGameOver = true)
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
         viewModel.holdDice(mockDiceList.first().id)
 
         assertEquals(mockDiceList, viewModel.diceUi.getOrAwaitValue())
@@ -122,7 +130,7 @@ class DiceViewModelTest {
     @Test
     fun givenNoDiceSelectedWhenRollDiceThenGetNewRandomDiceAndPlayRollSound() {
         val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         viewModel.rollDice()
 
@@ -136,7 +144,7 @@ class DiceViewModelTest {
     @Test
     fun givenSomeDiceAreSelectedWhenRollDiceThenNewDiceAreGeneratedAndSelectedShouldNotChange() {
         val mockDiceList = getRandomList(someSelected = true)
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         viewModel.rollDice()
 
@@ -150,7 +158,7 @@ class DiceViewModelTest {
     @Test
     fun givenAllDicesAreSelectedWithSameValuesWhenRollDiceThenResetGame() {
         val mockDiceList = getRandomList(isGameOver = true)
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         viewModel.rollDice()
 
@@ -165,7 +173,7 @@ class DiceViewModelTest {
     @Test
     fun givenAllDicesAreSelectedWithDifferentValuesWhenRollDiceThenDoNotPlaySound() {
         val mockDiceList = getRandomList(allSelected = true)
-        viewModel = DiceViewModel(mockDiceList)
+        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
 
         viewModel.rollDice()
 
