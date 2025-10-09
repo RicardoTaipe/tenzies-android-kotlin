@@ -1,6 +1,6 @@
 package com.example.tenziesapp
 
-import java.util.*
+import java.util.UUID
 import kotlin.random.Random
 
 data class Dice(

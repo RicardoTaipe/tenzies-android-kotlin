@@ -2,185 +2,120 @@ package com.example.tenziesapp
 
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
+import com.example.tenziesapp.GameUtils.initialNonWinningDice
+import com.example.tenziesapp.GameUtils.matchingDiceNotLocked
+import com.example.tenziesapp.GameUtils.winningDiceLocked
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.justRun
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.junit.MockitoJUnitRunner
-import java.util.concurrent.TimeoutException
 
 @RunWith(MockitoJUnitRunner::class)
 class DiceViewModelTest {
 
     @get:Rule
     val instantTaskExecutorRule = InstantTaskExecutorRule()
-
+    private val mockGameManager = mockk<GameManager>(relaxed = true)
     private lateinit var viewModel: DiceViewModel
-    private fun getRandomList(
-        isGameOver: Boolean = false,
-        allSelected: Boolean = false,
-        someSelected: Boolean = false,
-        allSameValue: Boolean = false,
-    ): List<Dice> {
-        return when {
-            allSameValue -> List(10) { Dice(value = 6) }
-            allSelected -> List(10) { Dice(isSelected = true) }
-            someSelected -> List(5) { Dice(value = 5, isSelected = true) } + List(5) { Dice() }
-            isGameOver -> List(10) { Dice(value = 5, isSelected = true) }
-            else -> List(10) { Dice() }
-        }
-    }
 
 
-    private fun getFakeGenerator(mockDiceList: List<Dice>): DiceGenerator {
-        return  object : DiceGenerator {
-            override fun generateNewDice(): List<Dice> {
-                return mockDiceList
-            }
-
-            override fun generateSingleDice() = Dice()
-        }
+    @Before
+    fun setup() {
+        clearAllMocks()
+        // Default setup for the initial state of the ViewModel
+        every { mockGameManager.currentDiceState } returns initialNonWinningDice
+        every { mockGameManager.isGameOver } returns false
+        justRun { mockGameManager.rollDice() }
+        justRun { mockGameManager.lockDice(any()) }
+        viewModel = DiceViewModel(mockGameManager)
     }
 
     @Test
-    fun whenInitGameThenGetARandomDiceList() {
-        val mockDiceList = getRandomList()
-        getFakeGenerator(mockDiceList)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
+    fun `initial state should load current state from GameManager`() {
+        // Assert initial values
+        viewModel.diceUi.getOrAwaitValue().shouldBe(initialNonWinningDice)
+        viewModel.isGameOver.getOrAwaitValue().shouldBeFalse()
 
-        val actual = viewModel.diceUi.getOrAwaitValue()
-
-        assertEquals(10, actual.size)
-        assertEquals(mockDiceList, actual)
+        // Assert that sound/event live data is null/empty initially
+        viewModel.soundEvent.value.shouldBe(null)
+        viewModel.onGameFinished.value.shouldBe(null)
     }
 
     @Test
-    fun givenRandomDiceListWhenOneOrMoreDiceAreHeldThenDiceShouldBeSelected() {
-        val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
+    fun `rollDice should delegate to GameManager and update UI (Non-winning roll)`() {
+        // Arrange
+        // Mock the state *after* the rollDice() call
+        every { mockGameManager.currentDiceState } returns initialNonWinningDice // Assume roll changes state
 
-        val selectedDiceCount = 3
-        mockDiceList.take(selectedDiceCount).forEach {
-            viewModel.holdDice(it.id)
-        }
-
-        val actualCount = viewModel.diceUi.getOrAwaitValue().filter { it.isSelected }.size
-        assertEquals(selectedDiceCount, actualCount)
-    }
-
-
-    @Test
-    fun givenAllDiceSelectedWithDifferentValuesWhenOneOrMoreDiceAreUnselectedThenDiceShouldBeUnSelected() {
-        val mockDiceList = getRandomList(allSelected = true)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
-
-        val unselectedDiceCount = 4
-        mockDiceList.take(unselectedDiceCount).forEach {
-            viewModel.holdDice(it.id)
-        }
-
-        val actualCount = viewModel.diceUi.getOrAwaitValue().filter { it.isUnSelected }.size
-        assertEquals(unselectedDiceCount, actualCount)
-    }
-
-    @Test
-    fun givenDiceListWithDifferentValuesWhenOneOrMoreAreSelectedThenGameIsNotOver() {
-        val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
-
-        mockDiceList.forEach {
-            viewModel.holdDice(it.id)
-        }
-
-        assertFalse(viewModel.isGameOver.getOrAwaitValue())
-    }
-
-    @Test
-    fun givenAllDiceWithSameValueWhenAllAreSelectedThenGameIsOverAndPlaySound() {
-        val mockDiceList = getRandomList(allSameValue = true)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
-        mockDiceList.forEach {
-            viewModel.holdDice(it.id)
-        }
-        assertTrue(viewModel.isGameOver.getOrAwaitValue())
-        assertEquals(
-            R.raw.goodresult,
-            viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
-        )
-        assertNotNull(viewModel.onGameFinished.getOrAwaitValue().getContentIfNotHandled())
-    }
-
-    @Test
-    fun givenGameIsOverWhenADiceIsSelectedShouldNotSelectAnyDice() {
-        val mockDiceList = getRandomList(isGameOver = true)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
-        viewModel.holdDice(mockDiceList.first().id)
-
-        assertEquals(mockDiceList, viewModel.diceUi.getOrAwaitValue())
-    }
-
-    /**
-     * ROLL ACTION
-     * */
-    @Test
-    fun givenNoDiceSelectedWhenRollDiceThenGetNewRandomDiceAndPlayRollSound() {
-        val mockDiceList = getRandomList()
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
-
+        // Act
         viewModel.rollDice()
 
-        assertNotEquals(mockDiceList, viewModel.diceUi.getOrAwaitValue())
-        assertEquals(
-            R.raw.rollingdice,
-            viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
-        )
+        // Assert
+        verify(exactly = 1) { mockGameManager.rollDice() }
+
+        // UI State Updated
+        viewModel.diceUi.getOrAwaitValue().shouldBe(initialNonWinningDice)
+        viewModel.isGameOver.getOrAwaitValue().shouldBeFalse()
+
+        // Sound Event (Rolling sound should play because dice are NOT locked)
+        viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled() shouldBe R.raw.rollingdice
     }
 
     @Test
-    fun givenSomeDiceAreSelectedWhenRollDiceThenNewDiceAreGeneratedAndSelectedShouldNotChange() {
-        val mockDiceList = getRandomList(someSelected = true)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
+    fun `lockDice should delegate to GameManager and update UI (Game still active)`() {
+        // Arrange
+        val diceId = "d1"
+        // Mock the state *after* the lockDice() call
+        every { mockGameManager.currentDiceState } returns matchingDiceNotLocked
+        every { mockGameManager.isGameOver } returns false
 
-        viewModel.rollDice()
+        // Act
+        viewModel.lockDice(diceId)
 
-        val (selectedDice, newGeneratedDice) = viewModel.diceUi.getOrAwaitValue()
-            .partition { it.isSelected }
-        assertTrue(selectedDice.all { it in mockDiceList })
-        assertTrue(newGeneratedDice.none { it in mockDiceList })
+        // Assert
+        verify(exactly = 1) { mockGameManager.lockDice(diceId) }
 
+        // UI State Updated
+        viewModel.diceUi.getOrAwaitValue().shouldBe(matchingDiceNotLocked)
+        viewModel.isGameOver.getOrAwaitValue().shouldBeFalse()
+
+        // Ensure no events were fired
+        viewModel.soundEvent.value.shouldBe(null)
+        viewModel.onGameFinished.value.shouldBe(null)
     }
 
     @Test
-    fun givenAllDicesAreSelectedWithSameValuesWhenRollDiceThenResetGame() {
-        val mockDiceList = getRandomList(isGameOver = true)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
+    fun `updateUiState should trigger game over events when state transitions to game over`() {
+        // Arrange
+        // Ensure initial state is NOT game over
+        viewModel.isGameOver.getOrAwaitValue().shouldBeFalse()
 
-        viewModel.rollDice()
+        // Mock the transition: state is now WINNING
+        every { mockGameManager.isGameOver } returns true
+        every { mockGameManager.currentDiceState } returns winningDiceLocked
 
-        val resetList = viewModel.diceUi.getOrAwaitValue()
-        assertNotEquals(mockDiceList, resetList)
-        assertFalse(viewModel.isGameOver.getOrAwaitValue())
-        assertEquals(
-            R.raw.rollingdice, viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
-        )
-    }
+        // Act: Call updateUiState() directly to test transition logic
+        viewModel.rollDice() // rollDice calls updateUiState internally
 
-    @Test
-    fun givenAllDicesAreSelectedWithDifferentValuesWhenRollDiceThenDoNotPlaySound() {
-        val mockDiceList = getRandomList(allSelected = true)
-        viewModel = DiceViewModel(getFakeGenerator(mockDiceList))
+        // Assert
+        // UI State Updated
+        viewModel.diceUi.getOrAwaitValue().shouldBe(winningDiceLocked)
+        viewModel.isGameOver.getOrAwaitValue().shouldBeTrue()
 
-        viewModel.rollDice()
+        // Sound Event (Winning sound should play)
+        viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled() shouldBe R.raw.goodresult
 
-        val resetList = viewModel.diceUi.getOrAwaitValue()
-        assertEquals(mockDiceList, resetList)
-        assertThrows("Sound Event should not be called", TimeoutException::class.java) {
-            viewModel.soundEvent.getOrAwaitValue().getContentIfNotHandled()
-        }
+        // Game Finished Event (Should fire once)
+        viewModel.onGameFinished.getOrAwaitValue().getContentIfNotHandled().shouldNotBe(null)
     }
 }

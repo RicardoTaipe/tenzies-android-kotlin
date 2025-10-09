@@ -1,11 +1,23 @@
 package com.example.tenziesapp
 
-import org.jetbrains.annotations.VisibleForTesting
+import androidx.annotation.VisibleForTesting
 
 object ServiceLocator {
-
     @Volatile
-    var diceGenerator: DiceGenerator = DiceGeneratorImp()
+    var gameManager: GameManager? = null
         @VisibleForTesting set
-    fun provideDiceGenerator(): DiceGenerator = diceGenerator
+
+    fun provideGameManager(): GameManager {
+        return gameManager ?: synchronized(this) {
+            gameManager ?: createRealGameManager().also { gameManager = it }
+        }
+    }
+
+    private fun createRealGameManager(): GameManager {
+        return TenziesGameManager(createDiceGenerator())
+    }
+
+    private fun createDiceGenerator(): DiceGenerator {
+        return DiceGeneratorImp()
+    }
 }

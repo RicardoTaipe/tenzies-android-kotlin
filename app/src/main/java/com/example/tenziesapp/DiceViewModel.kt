@@ -10,15 +10,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 
 class DiceViewModel(
-    private val diceGenerator: DiceGenerator,
+    val gameManager: GameManager,
 ) : ViewModel() {
 
-    private var diceList: List<Dice> = diceGenerator.generateNewDice()
-
-    private val _diceUi = MutableLiveData(diceList)
+    private val _diceUi = MutableLiveData(gameManager.currentDiceState)
     val diceUi: LiveData<List<Dice>> = _diceUi
 
-    private val _isGameOver = MutableLiveData(false)
+    private val _isGameOver = MutableLiveData(gameManager.isGameOver)
     val isGameOver: LiveData<Boolean> = _isGameOver
 
     private val _soundEvent = MutableLiveData<Event<Int>>()
@@ -27,83 +25,52 @@ class DiceViewModel(
     private val _onGameFinished = MutableLiveData<Event<Unit>>()
     val onGameFinished: LiveData<Event<Unit>> = _onGameFinished
 
+    init {
+        updateUiState()
+    }
+
+    /**
+     * Centralized logic to pull the latest state from GameManager and update LiveData.
+     */
+    private fun updateUiState() {
+        _diceUi.value = gameManager.currentDiceState
+        _isGameOver.value = gameManager.isGameOver
+        if (gameManager.isGameOver) {
+            playSound(R.raw.goodresult)
+            _onGameFinished.value = Event(Unit)
+        }
+    }
 
     fun rollDice() {
-        if (isGameOverCondition()) {
-            restartGame()
-        } else {
-            updateDiceAfterRoll()
-            checkGameOver()
+        gameManager.rollDice()
+        updateUiState()
+        playSoundIfDiceAreNotLocked()
+    }
+
+    fun lockDice(diceId: String) {
+        if (_isGameOver.value == true) return
+        gameManager.lockDice(diceId)
+        updateUiState()
+    }
+
+
+    private fun playSoundIfDiceAreNotLocked() {
+        val areAllLocked = gameManager.currentDiceState.all { it.isSelected }
+        if (!areAllLocked) {
+            playSound(R.raw.rollingdice)
         }
-        playSoundIfDiceAreNotHeld()
-    }
-
-    fun holdDice(id: String) {
-        if (!isGameOverCondition()) {
-            toggleDiceSelection(id)
-            checkGameOver()
-        }
-    }
-
-    private fun toggleDiceSelection(id: String) {
-        updateDice {
-            if (it.id == id) it.copy(isSelected = !it.isSelected) else it
-        }
-    }
-
-
-    private fun updateDiceAfterRoll() {
-        updateDice { dice ->
-            if (dice.isSelected) dice else diceGenerator.generateSingleDice()
-        }
-    }
-
-    private fun updateDice(updateFn: (Dice) -> Dice) {
-        diceList = diceList.map(updateFn)
-        _diceUi.value = diceList
-    }
-
-    private fun playSoundIfDiceAreNotHeld() {
-        if (!areAllDiceHeld()) playSound(R.raw.rollingdice)
-    }
-
-    private fun isGameOverCondition() = allDiceHaveSameValue() && areAllDiceHeld()
-
-    private fun generateNewDice() = List(10) { Dice() }
-
-    private fun restartGame() {
-        generateNewDice().apply {
-            diceList = this
-            _diceUi.value = this
-        }
-        _isGameOver.value = false
     }
 
     private fun playSound(@RawRes rawRes: Int) {
         _soundEvent.value = Event(rawRes)
     }
 
-    private fun checkGameOver() {
-        if (isGameOverCondition()) {
-            _isGameOver.value = true
-            playSound(R.raw.goodresult)
-            _onGameFinished.value = Event(Unit)
-        }
-    }
-
-    private fun areAllDiceHeld() = diceList.all { it.isSelected }
-    private fun allDiceHaveSameValue(): Boolean = diceList.run {
-        val firstValue = first().value
-        all { it.value == firstValue }
-    }
-
-
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as TenziesApplication)
-                val diceGenerator = application.diceGenerator
-                DiceViewModel(diceGenerator)
+                val gameManager = application.gameManager
+                DiceViewModel(gameManager)
             }
         }
     }

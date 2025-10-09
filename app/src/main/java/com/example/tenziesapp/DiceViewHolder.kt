@@ -18,11 +18,12 @@ class DiceViewHolder(private val binding: DiceLayoutBinding) :
         isAnimationEnabled: Boolean,
         onEndAnimationListener: ((Boolean) -> Unit)?
     ) {
-        binding.root.setOnClickListener {
-            itemClickListener?.invoke(dice, adapterPosition)
-        }
 
         binding.diceImg.run {
+            setOnClickListener {
+                itemClickListener?.invoke(dice, adapterPosition)
+            }
+            tag = dice.id
             setImageResource(retrieveImage(dice.value))
             setColorFilter(
                 ContextCompat.getColor(
@@ -30,6 +31,7 @@ class DiceViewHolder(private val binding: DiceLayoutBinding) :
                     if (dice.isSelected) R.color.purple_200 else R.color.white
                 ), PorterDuff.Mode.MULTIPLY
             )
+            isSelected = dice.isSelected
             contentDescription = dice.value.toString()
         }
 

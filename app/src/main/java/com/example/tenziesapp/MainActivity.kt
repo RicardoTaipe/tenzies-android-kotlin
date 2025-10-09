@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
             damping = 0.9f,
             spread = 360,
             colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
-            emitter = Emitter(duration = 3, TimeUnit.SECONDS).max(1000),
+            emitter = Emitter(duration = 3, TimeUnit.SECONDS).max(500),
             position = Position.Relative(0.5, 0.3)
         )
     }
@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.isGameOver.observe(this) { isGameOver ->
             with(binding) {
                 rollBtn.text = getString(if (isGameOver) R.string.game_over else R.string.roll)
-                confetti.takeIf { it.isActive() }?.stop(party)
+                confetti.takeIf { !isGameOver && it.isActive() }?.stop(party)
             }
         }
 
@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         diceAdapter.itemClickListener = { dice, _ ->
-            viewModel.holdDice(dice.id)
+            viewModel.lockDice(dice.id)
         }
     }
 
